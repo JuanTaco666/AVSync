@@ -27,6 +27,9 @@ class Fingerprint:
     def get_length(self):
         return self.length
 
+    def get_points(self):
+        return self.important_points
+
     # cuts with start_time inclusive and stop_time exclusive
     def cut(self, start_time, stop_time):
         new_length = stop_time - start_time

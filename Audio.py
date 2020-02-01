@@ -5,7 +5,7 @@ from Fingerprint import Fingerprint
 class Audio:
     def __init__(self, audio_file=None, fingerprint=None, delta_time=0.1):
         if fingerprint is not None:
-            self.get_fingerprint = fingerprint
+            self.fingerprint = fingerprint
         # delta_time is the amount of time between each bit of data: essentially the resolution
         self.delta_time = delta_time
         if audio_file is not None:
