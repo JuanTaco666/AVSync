@@ -1,10 +1,6 @@
 class Audio:
-    
-    def __init__(self, file):
+    def __init__(self, audio_file):
         pass
 
-    def __init__(self, file_name):
-        pass
-
-    def __init__(self, other, start_time, stop_time):
+    def cut(self, start_time, stop_time):
         pass
