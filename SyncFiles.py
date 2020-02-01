@@ -10,21 +10,26 @@ def sync_files(audio_file, video_file):
     high_quality_audio = Audio(audio_file)
     low_quality_audio = Audio(video_file.audio)
 
-    concurrent_audio_pairs = find_concurrent_pairs(low_quality_audio, high_quality_audio)
+    [video_times, audio_times] = find_concurrent_pairs(low_quality_audio, high_quality_audio)
+
+    for i in range(0, len(video_times)):
+        audio_times[i] = to_seconds(audio_times[i], high_quality_audio)
+        video_times[i] = to_seconds(video_times[i], low_quality_audio)
+
+    # debug
+    for i in range(0, len(video_times)):
+        lq_time = video_times[i]
+        hq_time = audio_times[i]
+        lq_str = to_string(lq_time)
+        hq_str = to_string(hq_time)
+        print("was " + lq_str + " but now is " + hq_str)
 
     adjusted_clips = []
-    for i in range(0, len(concurrent_audio_pairs) - 1):
-        clip = video_file.subclip(concurrent_audio_pairs[0][i], concurrent_audio_pairs[0][i + 1])
-        proper_duration = concurrent_audio_pairs[1][i + 1] - concurrent_audio_pairs[1][i]
+    for i in range(0, len(video_times) - 1):
+        clip = video_file.subclip(video_times[i], video_times[i + 1])
+        proper_duration = audio_times[i + 1] - audio_times[i]
         accelerated_clip = moviepy.video.fx.all.accel_decel(clip, new_duration=proper_duration, abruptness=0)
         adjusted_clips.append(accelerated_clip)
-
-        # debug
-        lq_time = concurrent_audio_pairs[0][i + 1]
-        hq_time = concurrent_audio_pairs[1][i + 1]
-        lq_str = to_string(to_seconds(lq_time, low_quality_audio))
-        hq_str = to_string(to_seconds(hq_time, high_quality_audio))
-        print("was: " + lq_str + " but now is " + hq_str)
 
     adjusted_video = concatenate_videoclips(adjusted_clips)
     write_file = adjusted_video.set_audio(audio_file)
@@ -32,7 +37,7 @@ def sync_files(audio_file, video_file):
 
 
 def to_seconds(time, audio):
-    return time / audio.delta_time
+    return time * audio.delta_time
 
 
 def to_string(seconds):

@@ -36,5 +36,6 @@ class Fingerprint:
         new_points = []
         for point in self.important_points:
             if start_time <= point.get_time() < stop_time:
-                new_points.append(point)
+                new_point = FrequencyPoint(point.get_time() - start_time, point.get_frequency())
+                new_points.append(new_point)
         return Fingerprint(points=new_points, length=new_length)

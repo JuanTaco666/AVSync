@@ -7,7 +7,8 @@ from Fingerprint import FrequencyPoint
 def distance(p_1, p_2=FrequencyPoint(0, 0)):
     time_dist = p_1.get_time() - p_2.get_time()
     frequency_dist = p_1.get_frequency() - p_2.get_frequency()
-    return sqrt(time_dist ** 2 + frequency_dist ** 2)
+    total_dist = sqrt(time_dist ** 2 + frequency_dist ** 2)
+    return total_dist ** (1 / 3)
 
 
 def min_distance(p, point_list):

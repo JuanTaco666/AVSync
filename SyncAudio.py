@@ -1,14 +1,11 @@
 from AudioCompare import compare_clips
 
-clip_radius = 25
+clip_radius = 1000
 
 
 # Very naive, and should be changed
 def find_concurrent_pairs(compared_audio, audio):
     concurrent_pairs = [[], []]
-    concurrent_pairs[0].append(0)  # compared_audio start
-    concurrent_pairs[1].append(0)  # audio_start
-
     for i in range(clip_radius, audio.get_length() - clip_radius, 2 * clip_radius):
         concurrent_pairs[1].append(i)
 
@@ -24,6 +21,10 @@ def find_concurrent_pairs(compared_audio, audio):
                 best_time = j
         concurrent_pairs[0].append(best_time)
 
+    remove_unordered_pairs(concurrent_pairs)
+
+    concurrent_pairs[0].insert(0, 0)  # compared_audio start
+    concurrent_pairs[1].insert(0, 0)  # audio_start
     concurrent_pairs[0].append(compared_audio.get_length())
     concurrent_pairs[1].append(audio.get_length())
 
