@@ -9,7 +9,6 @@ class FrequencyPoint:
     def get_frequency(self):
         return self.frequency
 
-
 class Fingerprint:
     def __init__(self, spectrogram=None, points=None, length=None):
         if points is not None and length is not None:

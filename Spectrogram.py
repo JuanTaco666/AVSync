@@ -1,24 +1,23 @@
 import numpy as np
-from scipy.signal import find_peaks
-from scipy.signal import find_peaks_cwt
-from scipy.signal import savgol_filter
 
-import plotly.graph_objects as go
-import pandas as pd
+from scipy.signal import spectrogram
+from scipy.fft import fftshift
+import matplotlib.pyplot as plt
 
 
 class Spectrogram:
     def __init__(self, audio_file, delta_time):
-        # temporary: should be redone!!
-        volumes = get_volume_array(audio_file, delta_time)
-        show_figure(volumes)
-        volumes = savgol_filter(np.array(volumes), 41, 5)
-        # self.peaks = find_peaks(volumes, distance=15)
-        self.peaks = find_peaks_cwt(volumes, np.arange(1, 16), max_distances=np.arange(1, 16) * 2)
-        self.peaks = np.array(self.peaks) - 1
-        self.length = len(volumes)
+        sound_array = audio_file.to_soundarray()
+        # mono_array = []
+        # for i in range(len(sound_array)):
+        #     mono_array.append(0.5 * (sound_array[0] + sound_array[1]))
+        mono_array = sound_array[:, 0]
+        f, t, Sxx = spectrogram(mono_array, fs=delta_time)
 
-        show_figure(volumes, self.peaks)
+        plt.pcolormesh(t, f, Sxx)
+        plt.ylabel('Frequency [Hz]')
+        plt.xlabel('Time [sec]')
+        plt.show()
 
     def get_length(self):
         return self.length
