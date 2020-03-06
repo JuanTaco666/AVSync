@@ -26,11 +26,6 @@ DEFAULT_WINDOW_SIZE = 4096
 DEFAULT_OVERLAP_RATIO = 0.5
 
 ######################################################################
-# Degree to which a fingerprint can be paired with its neighbors --
-# higher will cause more fingerprints, but potentially better accuracy.
-DEFAULT_FAN_VALUE = 15
-
-######################################################################
 # Minimum amplitude in spectrogram in order to be considered a peak.
 # This can be raised to reduce number of fingerprints, but can negatively
 # affect accuracy.
@@ -61,32 +56,61 @@ PEAK_SORT = True
 # with potentially lesser collisions of matches.
 FINGERPRINT_REDUCTION = 20
 
-def fingerprint(channel_samples, Fs=DEFAULT_FS,
+
+class Fingerprint:
+    def __init__(self, audio_file=None, points=None, length=None,
+                Fs=DEFAULT_FS,
                 wsize=DEFAULT_WINDOW_SIZE,
                 wratio=DEFAULT_OVERLAP_RATIO,
-                fan_value=DEFAULT_FAN_VALUE,
-                amp_min=DEFAULT_AMP_MIN):
-    """
-    FFT the channel, log transform output, find local maxima, then return
-    locally sensitive hashes.
-    """
-    # FFT the signal and extract frequency components
-    arr2D = mlab.specgram(
-        channel_samples,
-        NFFT=wsize,
-        Fs=Fs,
-        window=mlab.window_hanning,
-        noverlap=int(wsize * wratio))[0]
+                amp_min=DEFAULT_AMP_MIN,
+                plot=False):
+        self.Fs = Fs
+        if points is not None and length is not None:
+            self.important_points = points
+            self.length = length
+            return
 
-    # apply log transform since specgram() returns linear array
-    arr2D = 10 * np.log10(arr2D)
-    arr2D[arr2D == -np.inf] = 0  # replace infs with zeros
+        self.important_points = []
+        if audio_file is not None:
+            self.length = audio_file.duration
+            channel_samples = audio_file.to_soundarray()[:, 0]
 
-    # find local maxima
-    local_maxima = get_2D_peaks(arr2D, plot=False, amp_min=amp_min)
+            # FFT the signal and extract frequency components
+            arr2D = mlab.specgram(
+                channel_samples,
+                NFFT=wsize,
+                Fs=Fs,
+                window=mlab.window_hanning,
+                noverlap=int(wsize * wratio))[0]
 
-    # return hashes
-    return generate_hashes(local_maxima, fan_value=fan_value)
+            # apply log transform since specgram() returns linear array
+            arr2D = 10 * np.log10(arr2D)
+            arr2D[arr2D == -np.inf] = 0  # replace infs with zeros
+
+            self.length = arr2D.shape[1]
+
+            # find local maxima
+            self.important_points = get_2D_peaks(arr2D, plot=plot, amp_min=amp_min)
+
+    def get_length(self):
+        return self.length
+
+    def get_Fs(self):
+        return self.Fs
+
+    def get_points(self):
+        return self.important_points
+
+    # cuts with start_time inclusive and stop_time exclusive
+    def cut(self, start_time, stop_time):
+        new_length = stop_time - start_time
+        new_points = []
+        for point in self.important_points:
+            if start_time <= point.get_time() < stop_time:
+                new_point = [point[0] - start_time, point[1]]
+                new_points.append(new_point)
+        return Fingerprint(points=new_points, length=new_length)
+
 
 
 def get_2D_peaks(arr2D, plot=False, amp_min=DEFAULT_AMP_MIN):
@@ -110,14 +134,14 @@ def get_2D_peaks(arr2D, plot=False, amp_min=DEFAULT_AMP_MIN):
     # filter peaks
     amps = amps.flatten()
     peaks = zip(i, j, amps)
-    peaks_filtered = filter(lambda x: x[2]>amp_min, peaks) # freq, time, amp
+    peaks_filtered = filter(lambda x: x[2] > amp_min, peaks)  # freq, time, amp
     # get indices for frequency and time
     frequency_idx = []
     time_idx = []
     for x in peaks_filtered:
         frequency_idx.append(x[1])
         time_idx.append(x[0])
-    
+
     if plot:
         # scatter of the peaks
         fig, ax = plt.subplots()
@@ -130,28 +154,3 @@ def get_2D_peaks(arr2D, plot=False, amp_min=DEFAULT_AMP_MIN):
         plt.show()
 
     return zip(frequency_idx, time_idx)
-
-
-def generate_hashes(peaks, fan_value=DEFAULT_FAN_VALUE):
-    """
-    Hash list structure:
-       sha1_hash[0:20]    time_offset
-    [(e05b341a9b77a51fd26, 32), ... ]
-    """
-    if PEAK_SORT:
-        peaks.sort(key=itemgetter(1))
-
-    for i in range(len(peaks)):
-        for j in range(1, fan_value):
-            if (i + j) < len(peaks):
-
-                freq1 = peaks[i][IDX_FREQ_I]
-                freq2 = peaks[i + j][IDX_FREQ_I]
-                t1 = peaks[i][IDX_TIME_J]
-                t2 = peaks[i + j][IDX_TIME_J]
-                t_delta = t2 - t1
-
-                if t_delta >= MIN_HASH_TIME_DELTA and t_delta <= MAX_HASH_TIME_DELTA:
-                    h = hashlib.sha1(
-                        "%s|%s|%s" % (str(freq1), str(freq2), str(t_delta)))
-                    yield (h.hexdigest()[0:FINGERPRINT_REDUCTION], t1)

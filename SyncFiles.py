@@ -7,8 +7,8 @@ from SyncAudio import find_concurrent_pairs
 
 
 def sync_files(audio_file, video_file):
-    high_quality_audio = Audio(audio_file)
-    low_quality_audio = Audio(video_file.audio)
+    high_quality_audio = Audio(audio_file=audio_file)
+    low_quality_audio = Audio(audio_file=video_file.audio)
 
     [video_times, audio_times] = find_concurrent_pairs(low_quality_audio, high_quality_audio)
 
@@ -37,7 +37,7 @@ def sync_files(audio_file, video_file):
 
 
 def to_seconds(time, audio):
-    return time * audio.delta_time
+    return time / audio.get_Fs()
 
 
 def to_string(seconds):
