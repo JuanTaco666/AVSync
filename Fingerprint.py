@@ -58,18 +58,19 @@ FINGERPRINT_REDUCTION = 20
 
 
 class Fingerprint:
-    def __init__(self, audio_file=None, points=None, length=None,
-                Fs=DEFAULT_FS,
-                wsize=DEFAULT_WINDOW_SIZE,
-                wratio=DEFAULT_OVERLAP_RATIO,
-                amp_min=DEFAULT_AMP_MIN,
-                plot=False):
-        self.Fs = Fs
-        if points is not None and length is not None:
+    def __init__(self, audio_file=None, points=None, time_per_window=None, length=None,
+                 Fs=DEFAULT_FS,
+                 wsize=DEFAULT_WINDOW_SIZE,
+                 wratio=DEFAULT_OVERLAP_RATIO,
+                 amp_min=DEFAULT_AMP_MIN,
+                 plot=False):
+        if points is not None and time_per_window is not None and length is not None:
             self.important_points = points
+            self.time_per_window = time_per_window
             self.length = length
             return
 
+        self.time_per_window = wsize * wratio / Fs
         self.important_points = []
         if audio_file is not None:
             self.length = audio_file.duration
@@ -95,8 +96,8 @@ class Fingerprint:
     def get_length(self):
         return self.length
 
-    def get_Fs(self):
-        return self.Fs
+    def to_seconds(self, time):
+        return time * self.time_per_window
 
     def get_points(self):
         return self.important_points
@@ -106,25 +107,24 @@ class Fingerprint:
         new_length = stop_time - start_time
         new_points = []
         for point in self.important_points:
-            if start_time <= point.get_time() < stop_time:
+            if start_time <= point[0] < stop_time:
                 new_point = [point[0] - start_time, point[1]]
                 new_points.append(new_point)
-        return Fingerprint(points=new_points, length=new_length)
-
+        return Fingerprint(points=new_points, length=new_length, time_per_window=self.time_per_window)
 
 
 def get_2D_peaks(arr2D, plot=False, amp_min=DEFAULT_AMP_MIN):
-    #  http://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.iterate_structure.html#scipy.ndimage.iterate_structure
+    # http://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.morphology.iterate_structure.html#scipy.ndimage.morphology.iterate_structure
     struct = generate_binary_structure(2, 1)
     neighborhood = iterate_structure(struct, PEAK_NEIGHBORHOOD_SIZE)
 
-    # find local maxima using our filter shape
+    # find local maxima using our fliter shape
     local_max = maximum_filter(arr2D, footprint=neighborhood) == arr2D
     background = (arr2D == 0)
     eroded_background = binary_erosion(background, structure=neighborhood,
                                        border_value=1)
 
-    # Boolean mask of arr2D with True at peaks (Fixed deprecated boolean operator by changing '-' to '^')
+    # Boolean mask of arr2D with True at peaks
     detected_peaks = local_max ^ eroded_background
 
     # extract peaks
@@ -134,13 +134,11 @@ def get_2D_peaks(arr2D, plot=False, amp_min=DEFAULT_AMP_MIN):
     # filter peaks
     amps = amps.flatten()
     peaks = zip(i, j, amps)
-    peaks_filtered = filter(lambda x: x[2] > amp_min, peaks)  # freq, time, amp
+    peaks_filtered = [x for x in peaks if x[2] > amp_min]  # freq, time, amp
+
     # get indices for frequency and time
-    frequency_idx = []
-    time_idx = []
-    for x in peaks_filtered:
-        frequency_idx.append(x[1])
-        time_idx.append(x[0])
+    frequency_idx = [x[1] for x in peaks_filtered]
+    time_idx = [x[0] for x in peaks_filtered]
 
     if plot:
         # scatter of the peaks
@@ -153,4 +151,4 @@ def get_2D_peaks(arr2D, plot=False, amp_min=DEFAULT_AMP_MIN):
         plt.gca().invert_yaxis()
         plt.show()
 
-    return zip(frequency_idx, time_idx)
+    return tuple(zip(frequency_idx, time_idx))

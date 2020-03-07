@@ -6,7 +6,7 @@ class Audio:
         if fingerprint is not None:
             self.fingerprint = fingerprint
         if audio_file is not None:
-            self.fingerprint = Fingerprint(audio_file)
+            self.fingerprint = Fingerprint(audio_file, amp_min=-90, plot=True)
 
     def get_fingerprint(self):
         return self.fingerprint
@@ -14,8 +14,8 @@ class Audio:
     def get_length(self):
         return self.fingerprint.get_length()
 
-    def get_Fs(self):
-        return self.fingerprint.get_Fs()
+    def to_seconds(self, time):
+        return self.fingerprint.to_seconds(time)
 
     def cut(self, start_time=0, stop_time=None):
         if stop_time is None:

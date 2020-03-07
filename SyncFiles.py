@@ -8,21 +8,19 @@ from SyncAudio import find_concurrent_pairs
 
 def sync_files(audio_file, video_file):
     high_quality_audio = Audio(audio_file=audio_file)
-    low_quality_audio = Audio(audio_file=video_file.audio)
+    video_audio = Audio(audio_file=video_file.audio)
 
-    [video_times, audio_times] = find_concurrent_pairs(low_quality_audio, high_quality_audio)
+    [video_times, audio_times] = find_concurrent_pairs(video_audio, high_quality_audio)
 
     for i in range(0, len(video_times)):
-        audio_times[i] = to_seconds(audio_times[i], high_quality_audio)
-        video_times[i] = to_seconds(video_times[i], low_quality_audio)
+        audio_times[i] = high_quality_audio.to_seconds(audio_times[i])
+        video_times[i] = video_audio.to_seconds(video_times[i])
 
     # debug
     for i in range(0, len(video_times)):
-        lq_time = video_times[i]
-        hq_time = audio_times[i]
-        lq_str = to_string(lq_time)
-        hq_str = to_string(hq_time)
-        print("was " + lq_str + " but now is " + hq_str)
+        video_time = to_string(video_times[i])
+        audio_time = to_string(audio_times[i])
+        print("was " + video_time + " but now is " + audio_time)
 
     adjusted_clips = []
     for i in range(0, len(video_times) - 1):
@@ -34,10 +32,6 @@ def sync_files(audio_file, video_file):
     adjusted_video = concatenate_videoclips(adjusted_clips)
     write_file = adjusted_video.set_audio(audio_file)
     return write_file
-
-
-def to_seconds(time, audio):
-    return time / audio.get_Fs()
 
 
 def to_string(seconds):
